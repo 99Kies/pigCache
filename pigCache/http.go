@@ -36,16 +36,15 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	p.Log("%s %s", r.Method, r.URL.Path)
 	// /<basepath>/<groupname>/<key> required
-	fmt.Println(r.URL.Path[len(p.basePath):])
-	parts := strings.SplitN(r.URL.Path[len(p.basePath):], "/", 3)
+	parts := strings.SplitN(r.URL.Path[len(p.basePath)+1:], "/", 2)
 	fmt.Println(parts)
-	if len(parts) != 3 {
+	if len(parts) != 2 {
 		http.Error(w, "bad request, illegal path", http.StatusBadRequest)
 		return
 	}
 
-	groupName := parts[1]
-	key := parts[2]
+	groupName := parts[0]
+	key := parts[1]
 	fmt.Println(groupName, key)
 	group := GetGroup(groupName)
 	if group == nil {
@@ -59,6 +58,7 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Connection", "keep-alive")
 	w.Write(view.ByteSlice())
 }
