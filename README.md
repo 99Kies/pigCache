@@ -9,8 +9,6 @@ Distributed Cache System by Golang
 
 **lru -> cache -> group -> peers**
 
-
-
 在底层通过 lru 实现缓存存储的具体逻辑(hash表+双链表实现的一个lru算法)。
 通过 cache 模块对lru模块做了一层并发处理的封装，通过线程锁实现并发处理 `mu.Lock()` and `mu.UnLock()`。
 通过 cache 模块，我们解决了数据在分布式读写时候，可能会遇到的读写冲突的问题，之后我们在 cache 模块的上层做了一层**资源**的概念 - `group`, 一个group结构体代表的是一个节点（更或者说是一个namespace的一环真实节点），可以把这个group当成数据库里的表或者是库。每个group里都会有一个环形状真实节点，每个真实节点下又有多个虚拟节点，客户端是通过访问真实节点的api，间接访问虚拟节点中存储的数据。
