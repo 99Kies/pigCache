@@ -4,14 +4,31 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"pigCache/consistenthash"
 	"strings"
+	"sync"
 )
 
-const defaultBasePath = "/_pigcache"
+//const defaultBasePath = "/_pigcache"
+//
+//type HTTPPool struct {
+//	self     string // 机器地址，（IP + 端口）
+//	basePath string // 路径
+//}
 
+const (
+	defaultBasePath = "/_pigcache/"
+	defaultReplicas = 50
+)
+
+// HTTPPool implements PeerPicker for a pool of HTTP peers.
 type HTTPPool struct {
-	self     string // 机器地址，（IP + 端口）
-	basePath string // 路径
+	// this peer's base URL, e.g. "https://example.net:8000"
+	self        string
+	basePath    string
+	mu          sync.Mutex // guards peers and httpGetters
+	peers       *consistenthash.Map
+	httpGetters map[string]*httpGetter // keyed by e.g. "http://10.0.0.2:8008"
 }
 
 func NewHTTPPool(self string) *HTTPPool {
@@ -62,3 +79,28 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Write(view.ByteSlice())
 }
+
+// Set 实例化一致性 hash 算法，添加传入的节点。
+func (p *HTTPPool) Set(peers ...string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.peers = consistenthash.New(defaultReplicas, nil)
+	p.peers.Add(peers...)
+	p.httpGetters = make(map[string]*httpGetter, len(peers))
+	for _, peer := range peers {
+		p.httpGetters[peer] = &httpGetter{baseURL: peer + p.basePath}
+	}
+}
+
+// PickPeer 根据具体的 key，选择对应的节点，返回节点对应的 HTTP 客户端。
+func (p *HTTPPool) PickPeer(key string) (PeerGetter, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if peer := p.peers.Get(key); peer != "" && peer != p.self {
+		p.Log("Pick peer %s", peer)
+		return p.httpGetters[peer], true
+	}
+	return nil, false
+}
+
+var _ PeerPicker = (*HTTPPool)(nil)

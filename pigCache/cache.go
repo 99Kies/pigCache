@@ -1,7 +1,7 @@
 package pigCache
 
 import (
-	"github.com/99Kies/pigCache/lru"
+	"pigCache/lru"
 	"sync"
 )
 

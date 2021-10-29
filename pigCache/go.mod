@@ -1,3 +1,3 @@
-module github.com/99Kies/pigCache
+module pigCache
 
 go 1.15

@@ -16,7 +16,7 @@ type Map struct {
 }
 
 func New(replicas int, fn Hash) *Map {
-	// 创建一个节点分配环
+	// 为一个存储链表分配 分布式节点环
 	m := &Map{
 		replicas: replicas,
 		hash:     fn,
